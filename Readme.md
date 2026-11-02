@@ -1,50 +1,74 @@
 # Multilevel Delayed Acceptance Sampler
 
+Dependencies are managed with Conan 2, which requires Python to be installed.\
+Build is done with CMake and a C++23-compatible compiler.
+
 ## Requirements
 
-- Python >= 3.10
-- Conan >= 2.0
-- CMake >= 4.3.1
+- Python \>= 3.10
+- Conan \>= 2.0
+- CMake \>= 4.3.1
 - C++23-compatible compiler
 
 ## Setup
 
-### 1. Create Python environment
+### 1\. Install Conan
 
-    python3 -m venv .venv
-    source .venv/bin/activate
+Install Conan using :
 
-### 2. Install Conan
 
-    pip install --upgrade pip
-    pip install "conan>=2.0"
+```bash
+python -m pip install "conan>=2.0"
+```
 
-### 3. Configure Conan
+Verify the installation:
 
-    conan profile detect --force
 
-### 4. Install dependencies
+```bash
+conan --version
+```
 
-Run from the project root directory:
+### 2\. Configure the Conan profile
 
-    conan install . --output-folder=build --build=missing -s build_type=Release
+If this is your first time using Conan on this system, detect the available compiler and generate a default profile:
 
-### 5. Configure and build
 
-    cmake -S . -B build \
-        -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake \
-        -DCMAKE_BUILD_TYPE=Release
+```bash
+conan profile detect
+```
 
-    cmake --build build --parallel
+This detects the installed compiler, its version, the system architecture and operating system. The generated profile is stored in Conan's configuration directory.
 
-### 6. Run tests
+You can inspect the detected profile using:
 
-    ctest --test-dir build --output-on-failure
 
-## Notes
+```bash
+conan profile show
+```
 
-- Dependencies are managed through `conanfile.py`.
-- Conan generates the CMake toolchain and dependency configuration files.
-- Missing dependency binaries are automatically built from source.
-- CMake must be installed separately; it is not currently managed by Conan.
-- Tests are enabled by default (`BUILD_TESTS=ON`).
+### 3\. Install dependencies
+
+From the project working directory containing `conanfile.py`, run:
+
+
+```bash
+conan install . -of ./build --build=missing
+```
+
+This resolves and installs the dependencies specified in `conanfile.py`. Existing compatible binary packages are downloaded, while dependencies without an available binary package are built from source.
+
+### 4\. Configure and build
+
+Configure the project using the Conan-generated CMake preset:
+
+
+```bash
+cmake --preset conan-release
+```
+
+Build the project:
+
+
+```bash
+cmake --build --preset conan-release
+```

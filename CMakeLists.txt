@@ -59,61 +59,7 @@ target_link_libraries(sampler
 
 #------------------------------------------------------- Experimens / Examples -----------------------------#
 
-target_include_directories(ex_runner PRIVATE src/cpp/include ${Boost_INCLUDE_DIRS})
-target_link_libraries(ex_runner PRIVATE functionClasses odeModel io sampler spdlog::spdlog magic_enum::magic_enum)
-target_compile_definitions(ex_runner PRIVATE
-    RESOURCES_DIR="${RESOURCES_DIR}"
-)
 add_executable(thesis_example src/cpp/examples/thesis_example.cpp)
 target_include_directories(thesis_example PRIVATE src/cpp/include ${Boost_INCLUDE_DIRS})
 target_link_libraries(thesis_example PRIVATE functionClasses odeModel io sampler spdlog::spdlog magic_enum::magic_enum)
-#------------------------------------------------------- Temporary / Unimportant -----------------------------#
 
-
-if(BUILD_TESTS)
-  set(TEST_DATADIR "${CMAKE_BINARY_DIR}/testdata")
-
-  enable_testing()
-
-  add_executable(
-    testSampler
-    src/cpp/tests/testSampler.cpp
-  )
-  target_link_libraries(
-    testSampler PRIVATE
-    GTest::gtest_main
-    sampler
-    io
-  )
-  target_include_directories(testSampler PRIVATE src/cpp/include  ${Boost_INCLUDE_DIRS})
-  target_compile_definitions(testSampler PRIVATE TEST_DATADIR="${TEST_DATADIR}")
-
-  add_executable(
-    testDistribution
-    src/cpp/tests/testDistribution.cpp
-  )
-  target_link_libraries(
-    testDistribution PRIVATE
-    GTest::gtest_main
-    io
-    distributions
-  )
-  target_include_directories(testDistribution PRIVATE src/cpp/include ${Boost_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS})
-  target_compile_definitions(testDistribution PRIVATE TEST_DATADIR="${TEST_DATADIR}")
-
-
-  file(COPY ${CMAKE_SOURCE_DIR}/src/cpp/tests/multiNormalMeanVarXs.csv
-      DESTINATION ${TEST_DATADIR})
-  file(COPY ${CMAKE_SOURCE_DIR}/src/cpp/tests/multiNormalLogpdf.csv
-      DESTINATION ${TEST_DATADIR})
-  file(COPY ${CMAKE_SOURCE_DIR}/src/cpp/tests/noisyData_J_T.csv
-      DESTINATION ${TEST_DATADIR})
-  file(COPY ${CMAKE_SOURCE_DIR}/src/cpp/tests/multiNormalCorrMeanCov.csv
-      DESTINATION ${TEST_DATADIR})
-  file(COPY ${CMAKE_SOURCE_DIR}/src/cpp/tests/multiNormalCorrEval.csv
-      DESTINATION ${TEST_DATADIR})
-
-  include(GoogleTest)
-  gtest_discover_tests(testSampler)
-  gtest_discover_tests(testDistribution)
-endif()

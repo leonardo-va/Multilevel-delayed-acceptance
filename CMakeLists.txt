@@ -19,6 +19,7 @@ find_package(indicators REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(nlohmann_json 3.12.0 REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(CLI11 REQUIRED)
 
 option(BUILD_TESTS OFF)
 
@@ -61,5 +62,5 @@ target_link_libraries(sampler
 
 add_executable(thesis_example src/cpp/examples/thesis_example.cpp)
 target_include_directories(thesis_example PRIVATE src/cpp/include ${Boost_INCLUDE_DIRS})
-target_link_libraries(thesis_example PRIVATE functionClasses odeModel io sampler spdlog::spdlog magic_enum::magic_enum)
+target_link_libraries(thesis_example PRIVATE functionClasses odeModel io sampler spdlog::spdlog magic_enum::magic_enum CLI11::CLI11)
 

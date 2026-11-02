@@ -21,6 +21,7 @@ class MultiLevelSampler(ConanFile):
         self.requires("magic_enum/0.9.7")
         self.requires("nlohmann_json/3.12.0")
         self.requires("eigen/5.0.1")
+        self.requires("cli11/2.4.2")
 
     # def build_requirements(self):
     #     self.tool_requires("cmake/4.3.1")

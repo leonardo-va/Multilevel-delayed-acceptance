@@ -4,8 +4,6 @@
 #include <spdlog/fmt/ranges.h>
 #include <spdlog/spdlog.h>
 #include <magic_enum/magic_enum.hpp>
-// preconditioned crank nikolson
-// tempering on coarse level
 
 
 void ProposalMechanismBase::setOwningSampler(Sampler& owningSampler){
@@ -84,7 +82,6 @@ std::vector<parameter_type> PcnProposal::operator() (const std::vector<parameter
     parameter_type flattenedProposal(paramSpaceDim, 0.0);
     for(int i = 0; i < paramSpaceDim; ++i){
         flattenedProposal.at(i) = priorMean.at(i) + scaledCorrectedFlattenedState.at(i) + (priorSample.at(i) - priorMean.at(i))*m_beta;
-        //im not sure about this other papers say sqrt(1-b²)theta+b*N(0,priorCov).I implemented priorMu + sqrt(1-b²)(theta-priorMu)+b*(N(priorMu, priorCov)-priorMu)
     }
     flattenedIdx = 0;
     std::vector<parameter_type> foldedProposal(currentState.size());
@@ -119,7 +116,7 @@ double PcnProposal::acceptanceProbability(Sampler* sampler, const std::vector<pa
 }
 
 
-FineLevelProposal::FineLevelProposal(Sampler* coarseSampler, size_t subchainLength, std::vector<ParameterDescription> fullStateDescription, ProposalMechanismBase* finePartMechanism): m_coarseSampler(coarseSampler), 
+MultiLevelProposal::MultiLevelProposal(Sampler* coarseSampler, size_t subchainLength, std::vector<ParameterDescription> fullStateDescription, ProposalMechanismBase* finePartMechanism): m_coarseSampler(coarseSampler), 
                                                                                                                                     m_subchainLength(subchainLength),
                                                                                                                                     m_fullStateDescription(fullStateDescription),
                                                                                                                                     m_finePartMechanism(finePartMechanism){
@@ -133,7 +130,7 @@ FineLevelProposal::FineLevelProposal(Sampler* coarseSampler, size_t subchainLeng
             const ParameterDescription entry_fine = m_fullStateDescription[j];
             if(entry_fine.m_name == entry_coarse.m_name){
                 if(entry_fine.size() < entry_coarse.size()){
-                    throw std::runtime_error("FineLevelProposal:: Coarse level parameters must be a subset of fine level parameters");
+                    throw std::runtime_error("MultiLevelProposal:: Coarse level parameters must be a subset of fine level parameters");
                 }
                 if(entry_fine.size() != entry_fine.m_totalSize){
                     for(const auto& index: entry_coarse.getSubsetIndices()){
@@ -141,7 +138,7 @@ FineLevelProposal::FineLevelProposal(Sampler* coarseSampler, size_t subchainLeng
                         auto indexFineCorrespondence = std::find(fineSSind.begin(), fineSSind.end(), index);
                         for(const auto&val: fineSSind){std::cout<<val<<"!!"<<std::endl;;}
                         if(!fineSSind.contains(index)){
-                            throw std::runtime_error("2FineLevelProposal:: Coarse level parameters must be a subset of fine level parameters");
+                            throw std::runtime_error("2MultiLevelProposal:: Coarse level parameters must be a subset of fine level parameters");
                         }
                     }
                 }
@@ -150,7 +147,7 @@ FineLevelProposal::FineLevelProposal(Sampler* coarseSampler, size_t subchainLeng
             }
         }
         if(!foundFineCorrespondence){
-            throw std::runtime_error("FineLevelProposal:: Coarse level parameters must be a subset of fine level parameters");
+            throw std::runtime_error("MultiLevelProposal:: Coarse level parameters must be a subset of fine level parameters");
         }
     }
     m_fullStateIndexCorrespondence = fullStateIndexCorrespondence;
@@ -216,7 +213,7 @@ FineLevelProposal::FineLevelProposal(Sampler* coarseSampler, size_t subchainLeng
     m_randomSubchainIndex = std::uniform_int_distribution<>(0, subchainLength-1);
 };
 
-std::vector< parameter_type > FineLevelProposal::extractCoarseState( const std::vector< parameter_type >& fineState ) const {
+std::vector< parameter_type > MultiLevelProposal::extractCoarseState( const std::vector< parameter_type >& fineState ) const {
     std::vector< parameter_type > coarseState(m_fullStateIndexCorrespondence.size());
     for(int i=0; i<m_fullStateIndexCorrespondence.size(); ++i){
         for(const auto& subsetIdx : m_coarseStateDescription[i].m_subsetIndices){
@@ -226,7 +223,7 @@ std::vector< parameter_type > FineLevelProposal::extractCoarseState( const std::
     return coarseState;
 };
 
-void FineLevelProposal::buildFineState(std::vector< parameter_type >& fineState, const std::vector< parameter_type >& coarseState ) const {
+void MultiLevelProposal::buildFineState(std::vector< parameter_type >& fineState, const std::vector< parameter_type >& coarseState ) const {
     for(int i=0; i<m_fullStateIndexCorrespondence.size(); ++i){
         for(int j = 0; j < m_coarseStateDescription[i].m_subsetIndices.size(); ++j){
             int subsetIdx = m_coarseStateDescription[i].m_subsetIndices[j];
@@ -235,9 +232,9 @@ void FineLevelProposal::buildFineState(std::vector< parameter_type >& fineState,
     }
 };
 
-std::pair< std::vector< parameter_type >, std::vector< parameter_type > > FineLevelProposal::splitState(const std::vector< parameter_type >& fullState) const {
+std::pair< std::vector< parameter_type >, std::vector< parameter_type > > MultiLevelProposal::splitState(const std::vector< parameter_type >& fullState) const {
     if(m_nameTags.size() != fullState.size()){
-        throw std::runtime_error("FineLevelProposal:: mismatch passed state and state description");
+        throw std::runtime_error("MultiLevelProposal:: mismatch passed state and state description");
     }
     std::vector< parameter_type > finePart;
     std::vector< parameter_type > coarsePart;
@@ -268,7 +265,7 @@ std::pair< std::vector< parameter_type >, std::vector< parameter_type > > FineLe
     return{finePart, coarsePart};
 }
 
-std::vector< parameter_type > FineLevelProposal::combineToFullState(const std::vector< parameter_type >& fineState, const std::vector< parameter_type >& coarseState) const {
+std::vector< parameter_type > MultiLevelProposal::combineToFullState(const std::vector< parameter_type >& fineState, const std::vector< parameter_type >& coarseState) const {
     std::vector< parameter_type > fullState;
     auto coarseState_It = coarseState.begin();
     auto fineState_It = fineState.begin();
@@ -306,7 +303,7 @@ std::vector< parameter_type > FineLevelProposal::combineToFullState(const std::v
     return fullState;
 }
 
-std::vector<parameter_type> FineLevelProposal::operator()(const std::vector<parameter_type>& currentState){
+std::vector<parameter_type> MultiLevelProposal::operator()(const std::vector<parameter_type>& currentState){
     auto[fineState, coarseState] = splitState(currentState);
     // there might be an unnecessary posterior evaluation here in set_nextState, this is measurable in the benchmark. a Two level sample with subchain length 1
     // should be about the same cost as a fine only sample + a coarse sample, but its a bit more. This posterior is probably calculated again when making the next
@@ -334,7 +331,7 @@ std::vector<parameter_type> FineLevelProposal::operator()(const std::vector<para
     return proposalFull;
 }
 
-double FineLevelProposal::acceptanceProbability(Sampler* sampler, const std::vector<parameter_type>& proposedState) {
+double MultiLevelProposal::acceptanceProbability(Sampler* sampler, const std::vector<parameter_type>& proposedState) {
    
     auto coarseChain = m_coarseSampler->getChain();
     auto coarseLogPosteriors = m_coarseSampler->getLogPosteriorValues();
@@ -342,23 +339,18 @@ double FineLevelProposal::acceptanceProbability(Sampler* sampler, const std::vec
     double logPosteriorProposed = sampler->log_posterior_eval(proposedState);
     size_t coarseLength = coarseLogPosteriors.size();
     if(coarseLength < m_subchainLength){
-        throw std::runtime_error("FineLevelProposal:: acceptance probability cant be calculated, coarse chain did not run");
+        throw std::runtime_error("MultiLevelProposal:: acceptance probability cant be calculated, coarse chain did not run");
     }
 
     double currentStateCoarseLogPost = coarseLogPosteriors.at(coarseLogPosteriors.size() - m_subchainLength -1);
     double logAccept = logPosteriorProposed - fullLogPosteriors.back() + currentStateCoarseLogPost - coarseLogPosteriors.at(coarseChain.size()-1-m_currentSelectedSubchainIndex);
-    // spdlog::info("{} subchain idx {}, logPostProposed {} - logPostCurrent {}, + currentCoarseLogPost {} - coarseLogPostProposed {}", 
-    //     sampler->name,
-    //     m_currentSelectedSubchainIndex,
-    //     logPosteriorProposed, fullLogPosteriors.back(), currentStateCoarseLogPost, coarseLogPosteriors.at(coarseChain.size()-1-m_currentSelectedSubchainIndex)
-    // );
     
     return std::min(1., std::exp(logAccept));
 }
 
-const Sampler* FineLevelProposal::getCoarseSampler() const {return m_coarseSampler;};
+const Sampler* MultiLevelProposal::getCoarseSampler() const {return m_coarseSampler;};
 
-void FineLevelProposal::setOwningSampler(Sampler& owningSampler){
+void MultiLevelProposal::setOwningSampler(Sampler& owningSampler){
     m_owningSampler = &owningSampler;
     m_finePartMechanism->m_owningSampler = &owningSampler;
 };

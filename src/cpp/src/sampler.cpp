@@ -293,7 +293,7 @@ void Sampler::set_proposalMechanism(ProposalMechanismBase* propose){
     }
     m_proposalMechanism = propose;
     m_proposalMechanism->setOwningSampler(*this);
-    auto finePtr = dynamic_cast<FineLevelProposal*>(propose);
+    auto finePtr = dynamic_cast<MultiLevelProposal*>(propose);
     if(finePtr){
         level = finePtr->getCoarseSampler()->level + 1;
     }

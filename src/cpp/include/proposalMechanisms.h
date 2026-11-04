@@ -44,10 +44,10 @@ class PcnProposal : public ProposalMechanismBase{
     std::shared_ptr<multiNormalDist> m_priorDist;
 };
 
-class FineLevelProposal : public ProposalMechanismBase{
+class MultiLevelProposal : public ProposalMechanismBase{
     
     public:
-    FineLevelProposal(Sampler* coarseSampler, 
+    MultiLevelProposal(Sampler* coarseSampler, 
         size_t subchainLength, 
         std::vector<ParameterDescription> fullStateDescription, 
         ProposalMechanismBase* finePartMechanism);

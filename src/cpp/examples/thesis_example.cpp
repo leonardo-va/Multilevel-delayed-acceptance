@@ -3,19 +3,34 @@
 #include <types.h>
 #include <io.h>
 #include <spdlog/spdlog.h>
+#include <spdlog/fmt/ranges.h>
 #include <filesystem>
+#include <CLI/CLI.hpp>
 
 // example code for MLDA with two levels
 
-int main(){
+int main(int argc, char* argv[]){
+
+    CLI::App app{};
+
+    std::filesystem::path pathToData = "../../dataJM.csv";
+    std::filesystem::path outputFolder = "../../out";
+
+    app.add_option("-i,--input", pathToData, "Path to the data file")
+        ->required()
+        ->check(CLI::ExistingPath);
+
+    app.add_option("-o,--output", outputFolder, "Path to the data file")
+        ->required();
+
+    CLI11_PARSE(app, argc, argv);
+
     int numberOfChains = 8;
-    int numberOfSamples = 100;
-    int burnin = 10;
+    int numberOfSamples = 1000;
+    int burnin = 100;
     int subchainLength = 8;
 
-    std::filesystem::path outputFolder = "./out";
-    std::filesystem::path pathToData = "dataJM.csv";
-    
+    std::filesystem::create_directories(outputFolder);
     // default model parameters are used here (groundtruth)
     auto model_coarse = std::make_shared<SEIRModel>();
     model_coarse->set_evaluator(std::make_shared<FullModelEvaluator>());
@@ -129,7 +144,7 @@ int main(){
     
     std::vector<std::shared_ptr<ProposalMechanismBase>> multiLevelProposals;
     for( int i = 0; i<numberOfChains; ++i){
-        auto mlProposal = std::make_shared<FineLevelProposal>(coarseSamplers.at(i).get(), 
+        auto mlProposal = std::make_shared<MultiLevelProposal>(coarseSamplers.at(i).get(), 
                                                             subchainLength, 
                                                             inferredParameters_fine, 
                                                             fineProposals.at(i).get());
@@ -163,19 +178,15 @@ int main(){
         fineSamplers.push_back(sampler);
     }
 
-    // Initialize all samplers by setting an initial state for each inferred parameter,
+    // Initialize the first level by setting an initial state for each inferred parameter,
     // in the order as they were added to the sampler
     std::vector<state_type> initialState_coarse{
         {2,2,40},
         {3,35}
     };
-    std::vector<state_type> initialState_fine{
-        {2,2,40},
-        {3,35}
-    };
+
     for(int i = 0; i<numberOfChains; ++i){
         coarseSamplers.at(i)->set_initialState(initialState_coarse);
-        fineSamplers.at(i)->set_initialState(initialState_fine);
     }
 
     // To run the chains in parallel, define the workers:
@@ -184,10 +195,15 @@ int main(){
 
     // Each level needs to go through its burnin, before the next level can run. If there was no burnin period
     // defined previously, this can be skipped.
-    mtCoarse.run_for(burnin+1);
+    mtCoarse.run_for(burnin);
+    
+    // Initialize the next level with the current state of the coarse level after burnin
+    for(int i = 0; i<numberOfChains; ++i){
+        fineSamplers.at(i)->set_initialState(mtCoarse.getSamplers().at(i)->getCurrentState());
+    }
+    
     // For the finest level, burnin can be combined with sampling
     mtFine.run_for(numberOfSamples + burnin);
-
     // Write the output in a csv
     writeSamplerOutput(mtFine.getSamplers(), outputFolder / "fine" / "", false, "a", 0);
 

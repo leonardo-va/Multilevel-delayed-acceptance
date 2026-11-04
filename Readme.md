@@ -72,3 +72,26 @@ Build the project:
 ```bash
 cmake --build --preset conan-release
 ```
+
+### 5. Run the example program
+
+After successfully building the project, the example executable can be found in the `build/bin` directory.
+
+Run the program from the project root directory using:
+
+    ./build/bin/thesis_example -i <path-to-input-file> -o <path-to-output-folder>
+
+The program accepts the following command-line arguments:
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `-i, --input` | Path to the input data file (must exist). | Yes |
+| `-o, --output` | Path to the output directory. | Yes |
+
+For example:
+
+    ./build/bin/thesis_example -i ./dataJM.csv -o ./out
+
+
+**Note:** Both arguments must be provided when running the program. The input file must already exist. The output path specifies the directory where the generated results will be stored.
+
